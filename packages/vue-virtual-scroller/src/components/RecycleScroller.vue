@@ -223,6 +223,13 @@ export default {
       }
       return unusedPool
     },
+    clearPool () {
+      this.$_views.clear()
+      this.$_unusedViews.clear()
+      for (let i = 0, l = this.pool.length; i < l; i++) {
+        this.unuseView(this.pool[i])
+      }
+    },
     addView (pool, index, item, key, type) {
       const nr = markRaw({
         id: uid++,
@@ -295,7 +302,6 @@ export default {
       const count = items.length
       const sizes = this.sizes
       const views = this.$_views
-      const unusedViews = this.$_unusedViews
       const pool = this.pool
       let startIndex, endIndex
       let totalSize
@@ -384,12 +390,7 @@ export default {
 
       if (this.$_continuous !== continuous) {
         if (continuous) {
-          views.clear()
-          unusedViews.clear()
-          for (let i = 0, l = pool.length; i < l; i++) {
-            view = pool[i]
-            this.unuseView(view)
-          }
+          this.clearPool()
         }
         this.$_continuous = continuous
       } else if (continuous) {
