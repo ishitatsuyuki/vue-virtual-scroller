@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import { shallowReactive, markRaw } from 'vue'
+import { markRaw, shallowReactive } from 'vue'
 import { ResizeObserver } from 'vue-resize'
 import { ObserveVisibility } from 'vue-observe-visibility'
 import { getScrollParent } from '../scrollparent'
@@ -247,15 +247,13 @@ export default {
       return view
     },
 
-    unuseView (view, fake = false) {
+    unuseView (view) {
       const type = view.nr.type
       const unusedPool = this.getUnusedPool(type)
       unusedPool.push(view)
-      if (!fake) {
-        view.nr.used = false
-        view.position = -9999
-        this.$_views.delete(view.key)
-      }
+      view.nr.used = false
+      view.position = -9999
+      this.$_views.delete(view.key)
     },
 
     handleResize () {
@@ -388,12 +386,10 @@ export default {
 
       const continuous = startIndex <= this.$_endIndex && endIndex >= this.$_startIndex
 
-      if (this.$_continuous !== continuous) {
-        if (continuous) {
-          this.clearPool()
-        }
-        this.$_continuous = continuous
-      } else if (continuous) {
+      // Step 1: Mark any invisible elements as unused
+      if (!continuous) {
+        this.clearPool()
+      } else {
         for (let i = 0, l = pool.length; i < l; i++) {
           view = pool[i]
           if (view.nr.used) {
@@ -404,11 +400,12 @@ export default {
               )
             }
 
-            // Check if index is still in visible range
+            const elementVisible = view.index >= startIndex && view.index < endIndex
+            const elementSize = itemSize || sizes[i].size
             if (
               view.index === -1 ||
-              view.index < startIndex ||
-              view.index >= endIndex
+              !elementVisible ||
+              !elementSize
             ) {
               this.unuseView(view)
             }
@@ -416,11 +413,11 @@ export default {
         }
       }
 
-      const unusedIndex = continuous ? null : new Map()
-
+      // Step 2: Assign a view to every visible element and optionally update the props
       let item, type, unusedPool
-      let v
       for (let i = startIndex; i < endIndex; i++) {
+        const elementSize = itemSize || sizes[i].size
+        if (!elementSize) continue
         item = items[i]
         const key = keyField ? item[keyField] : i
         if (key == null) {
@@ -428,48 +425,22 @@ export default {
         }
         view = views.get(key)
 
-        if (!itemSize && !sizes[i].size) {
-          if (view) this.unuseView(view)
-          continue
-        }
-
         // No view assigned to item
         if (!view) {
           type = item[typeField]
           unusedPool = this.getUnusedPool(type)
 
-          if (continuous) {
-            // Reuse existing view
-            if (unusedPool && unusedPool.length) {
-              view = unusedPool.pop()
-              view.item = item
-              view.nr.used = true
-              view.index = i
-              view.key = key
-              view.nr.type = type
-            } else {
-              view = this.addView(pool, i, item, key, type)
-            }
-          } else {
-            // Use existing view
-            // We don't care if they are already used
-            // because we are not in continous scrolling
-            v = unusedIndex.get(type) || 0
-
-            if (!unusedPool || v >= unusedPool.length) {
-              view = this.addView(pool, i, item, key, type)
-              this.unuseView(view, true)
-              unusedPool = this.getUnusedPool(type)
-            }
-
-            view = unusedPool[v]
+          // See if we can grab a currently unused view
+          if (unusedPool && unusedPool.length) {
+            view = unusedPool.pop()
             view.item = item
             view.nr.used = true
             view.index = i
             view.key = key
             view.nr.type = type
-            unusedIndex.set(type, v + 1)
-            v++
+          } else {
+            // No unused view, so allocate a new one
+            view = this.addView(pool, i, item, key, type)
           }
           views.set(key, view)
         } else {
