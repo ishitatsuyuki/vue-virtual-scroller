@@ -214,6 +214,15 @@ export default {
   },
 
   methods: {
+    getUnusedPool (type) {
+      const unusedViews = this.$_unusedViews
+      let unusedPool = unusedViews.get(type)
+      if (!unusedPool) {
+        unusedPool = []
+        unusedViews.set(type, unusedPool)
+      }
+      return unusedPool
+    },
     addView (pool, index, item, key, type) {
       const nr = markRaw({
         id: uid++,
@@ -232,13 +241,8 @@ export default {
     },
 
     unuseView (view, fake = false) {
-      const unusedViews = this.$_unusedViews
       const type = view.nr.type
-      let unusedPool = unusedViews.get(type)
-      if (!unusedPool) {
-        unusedPool = []
-        unusedViews.set(type, unusedPool)
-      }
+      const unusedPool = this.getUnusedPool(type)
       unusedPool.push(view)
       if (!fake) {
         view.nr.used = false
@@ -431,7 +435,7 @@ export default {
         // No view assigned to item
         if (!view) {
           type = item[typeField]
-          unusedPool = unusedViews.get(type)
+          unusedPool = this.getUnusedPool(type)
 
           if (continuous) {
             // Reuse existing view
@@ -454,7 +458,7 @@ export default {
             if (!unusedPool || v >= unusedPool.length) {
               view = this.addView(pool, i, item, key, type)
               this.unuseView(view, true)
-              unusedPool = unusedViews.get(type)
+              unusedPool = this.getUnusedPool(type)
             }
 
             view = unusedPool[v]
