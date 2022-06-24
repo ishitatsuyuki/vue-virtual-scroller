@@ -28,13 +28,13 @@
         :key="view.nr.id"
         :style="ready ? { transform: `translate${direction === 'vertical' ? 'Y' : 'X'}(${view.position}px)` } : null"
         class="vue-recycle-scroller__item-view"
-        :class="{ hover: hoverKey === view.nr.key }"
-        @mouseenter="hoverKey = view.nr.key"
+        :class="{ hover: hoverKey === view.key }"
+        @mouseenter="hoverKey = view.key"
         @mouseleave="hoverKey = null"
       >
         <slot
           :item="view.item"
-          :index="view.nr.index"
+          :index="view.index"
           :active="view.nr.used"
         />
       </div>
@@ -217,14 +217,14 @@ export default {
     addView (pool, index, item, key, type) {
       const nr = markRaw({
         id: uid++,
-        index,
         used: true,
-        key,
         type,
       })
       const view = shallowReactive({
         item,
+        index,
         position: 0,
+        key,
         nr,
       })
       pool.push(view)
@@ -243,7 +243,7 @@ export default {
       if (!fake) {
         view.nr.used = false
         view.position = -9999
-        this.$_views.delete(view.nr.key)
+        this.$_views.delete(view.key)
       }
     },
 
@@ -394,16 +394,16 @@ export default {
           if (view.nr.used) {
             // Update view item index
             if (checkItem && keyField) {
-              view.nr.index = items.findIndex(
+              view.index = items.findIndex(
                 item => item[keyField] === view.item[keyField],
               )
             }
 
             // Check if index is still in visible range
             if (
-              view.nr.index === -1 ||
-              view.nr.index < startIndex ||
-              view.nr.index >= endIndex
+              view.index === -1 ||
+              view.index < startIndex ||
+              view.index >= endIndex
             ) {
               this.unuseView(view)
             }
@@ -439,8 +439,8 @@ export default {
               view = unusedPool.pop()
               view.item = item
               view.nr.used = true
-              view.nr.index = i
-              view.nr.key = key
+              view.index = i
+              view.key = key
               view.nr.type = type
             } else {
               view = this.addView(pool, i, item, key, type)
@@ -460,8 +460,8 @@ export default {
             view = unusedPool[v]
             view.item = item
             view.nr.used = true
-            view.nr.index = i
-            view.nr.key = key
+            view.index = i
+            view.key = key
             view.nr.type = type
             unusedIndex.set(type, v + 1)
             v++
